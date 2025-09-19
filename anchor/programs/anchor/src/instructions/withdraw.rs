@@ -18,7 +18,7 @@ pub fn withdraw(ctx: Context<WithdrawCtx>, cid: u64, amount: u64) -> Result<()> 
         return Err(Unauthorized.into());
     }
 
-    if amount <= 1_000_000_000 {
+    if amount <= 100_000_000 {
         return Err(InvalidWithdrawalAmount.into());
     }
 

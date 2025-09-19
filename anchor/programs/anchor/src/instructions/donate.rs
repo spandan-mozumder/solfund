@@ -16,7 +16,8 @@ pub fn donate(ctx: Context<DonateCtx>, cid: u64, amount: u64) -> Result<()> {
         return Err(InactiveCampaign.into());
     }
 
-    if amount < 1_000_000_000 {
+    // Lowered client-requested threshold: 0.1 SOL
+    if amount < 100_000_000 {
         return Err(InvalidGoalAmount.into());
     }
 

@@ -30,7 +30,7 @@ pub fn update_campaign(
     if image_url.len() > 256 {
         return Err(ImageUrlTooLong.into());
     }
-    if goal < 1_000_000_000 {
+    if goal < 100_000_000 {
         return Err(InvalidGoalAmount.into());
     }
 
