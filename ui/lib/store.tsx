@@ -59,13 +59,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const mapped: Campaign[] = onchain.campaigns.map(({ data }) => {
           const id = data.cid.toString();
           const endedInfo = ended[id];
+          const raised = fromLamports(
+            BigInt(
+              ((data.amountRaised ?? data.amount_raised) as any).toString?.() ??
+                (data.amountRaised ?? data.amount_raised)
+            )
+          );
           const base: Campaign = {
             id,
             title: data.title,
             description: data.description,
             imageUrl: data.imageUrl ?? data.image_url,
             targetAmount: fromLamports(BigInt((data.goal as any).toString?.() ?? data.goal)),
-            amountRaised: fromLamports(BigInt(((data.amountRaised ?? data.amount_raised) as any).toString?.() ?? (data.amountRaised ?? data.amount_raised))),
+            amountRaised: raised,
+            totalDonated: raised,
+            donorsCount: Number(data.donors ?? data.donors_count ?? 0),
             deadline: undefined,
             owner: data.creator?.toString?.(),
             createdAt: new Date(Number(((data.timestamp as any).toString?.() ?? data.timestamp)) * 1000).toISOString(),
@@ -111,7 +119,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       });
       const id = res.cid.toString();
       const now = new Date().toISOString();
-      const newCamp: Campaign = { id, title: input.title, description: input.description, imageUrl: input.imageUrl, targetAmount: input.targetAmount, amountRaised: 0, deadline: input.deadline, owner: undefined, createdAt: now, status: "active" };
+      const newCamp: Campaign = { id, title: input.title, description: input.description, imageUrl: input.imageUrl, targetAmount: input.targetAmount, amountRaised: 0, totalDonated: 0, donorsCount: 0, deadline: input.deadline, owner: undefined, createdAt: now, status: "active" };
       setState((prev) => ({ ...prev, campaigns: [newCamp, ...prev.campaigns] }));
       return newCamp;
     })();
@@ -139,7 +147,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const donate = useCallback((id: string, amount: number) => {
     return (async () => {
       await rpcDonate(BigInt(id), amount);
-      setState((prev) => ({ ...prev, campaigns: prev.campaigns.map((c) => (c.id === id ? { ...c, amountRaised: c.amountRaised + amount } : c)) }));
+      setState((prev) => ({
+        ...prev,
+        campaigns: prev.campaigns.map((c) => (
+          c.id === id
+            ? { ...c, amountRaised: c.amountRaised + amount, totalDonated: (c.totalDonated ?? c.amountRaised) + amount, donorsCount: (c.donorsCount ?? 0) + 1 }
+            : c
+        )),
+      }));
     })();
   }, []);
 
@@ -147,7 +162,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return (async () => {
       const amt = amount ?? state.campaigns.find((c) => c.id === id)?.amountRaised ?? 0;
       await rpcWithdraw(BigInt(id), amt);
-      setState((prev) => ({ ...prev, campaigns: prev.campaigns.map((c) => (c.id === id ? { ...c, amountRaised: Math.max(0, c.amountRaised - amt) } : c)) }));
+      setState((prev) => ({
+        ...prev,
+        campaigns: prev.campaigns.map((c) => (
+          c.id === id
+            ? { ...c, amountRaised: Math.max(0, c.amountRaised - amt), totalDonated: c.totalDonated ?? c.amountRaised }
+            : c
+        )),
+      }));
     })();
   }, [state.campaigns]);
 

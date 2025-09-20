@@ -6,7 +6,9 @@ export interface Campaign {
   description: string;
   imageUrl?: string;
   targetAmount: number; // in lamports-equivalent for UI; plain number
-  amountRaised: number;
+  amountRaised: number; // current balance (after withdrawals)
+  totalDonated?: number; // cumulative donations, does not decrease on withdraw
+  donorsCount?: number; // number of unique donations (approx from chain)
   deadline?: string; // ISO date string
   owner?: string; // pubkey string (optional in UI)
   createdAt: string; // ISO

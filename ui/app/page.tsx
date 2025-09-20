@@ -8,10 +8,10 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export default function Home() {
   const { state } = useStore();
-  const ids = state.campaigns.map((c) => c.id);
   const activeCampaigns = state.campaigns.filter(c => c.status === 'active');
-  const totalRaised = state.campaigns.reduce((sum, c) => sum + c.amountRaised, 0);
-  const totalBackers = Math.floor(Math.random() * 500) + 150; // Simulated
+  const activeIds = activeCampaigns.map((c) => c.id);
+  const totalRaised = state.campaigns.reduce((sum, c) => sum + (c.totalDonated ?? c.amountRaised), 0);
+  const totalBackers = state.campaigns.reduce((sum, c) => sum + (c.donorsCount ?? 0), 0);
 
   return (
     <div className="space-y-12">
@@ -92,24 +92,38 @@ export default function Home() {
             <h2 className="text-3xl font-bold tracking-tight">Featured Campaigns</h2>
             <p className="text-muted-foreground mt-2">Discover and support amazing projects from our community</p>
           </div>
-          <Button asChild variant="outline" className="hidden sm:flex">
-            <Link href="/campaigns/new" className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Create Campaign
-            </Link>
-          </Button>
+          <div className="hidden sm:flex gap-2">
+            <Button asChild variant="outline">
+              <Link href="/campaigns/completed" className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Completed Campaigns
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/campaigns/new" className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Create Campaign
+              </Link>
+            </Button>
+          </div>
+          <div className="sm:hidden">
+            <Button asChild size="sm" variant="outline">
+              <Link href="/campaigns/completed" className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Completed
+              </Link>
+            </Button>
+          </div>
         </div>
         
-        {ids.length === 0 ? (
+        {activeIds.length === 0 ? (
           <Card className="border-2 border-dashed border-muted-foreground/25 bg-gradient-to-br from-muted/30 to-muted/10">
             <CardContent className="text-center py-16 px-6">
               <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-6">
                 <Target className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">No campaigns yet</h3>
-              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                Be the first to create a campaign and start building something amazing with community support.
-              </p>
+              <h3 className="text-xl font-semibold mb-2">No active campaigns</h3>
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">Start one now, or browse completed campaigns.</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button asChild size="lg">
                   <Link href="/campaigns/new" className="flex items-center gap-2">
@@ -118,16 +132,14 @@ export default function Home() {
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="lg">
-                  <Link href="/settings">
-                    Configure Settings
-                  </Link>
+                  <Link href="/campaigns/completed">View Completed Campaigns</Link>
                 </Button>
               </div>
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-            {ids.map((id) => (
+            {activeIds.map((id) => (
               <CampaignCard key={id} id={id} />
             ))}
           </div>
@@ -135,7 +147,7 @@ export default function Home() {
       </section>
       
       {/* Call to Action */}
-      {ids.length > 0 && (
+      {activeIds.length > 0 && (
         <section className="text-center py-16">
           <Card className="border-0 shadow-xl bg-gradient-to-br from-primary/5 to-primary/10">
             <CardContent className="p-12">

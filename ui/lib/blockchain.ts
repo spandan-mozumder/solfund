@@ -143,3 +143,27 @@ export async function rpcUpdatePlatformFee(newPercent: number) {
     .rpc();
 }
 
+export async function listTransactionsByCampaign(cid: bigint) {
+  const program = await getProgram();
+  const all = await (program.account as any).transaction.all();
+  const filtered = all.filter((acc: any) => {
+    try {
+      const v = BigInt(acc.account.cid?.toString?.() ?? acc.account.cid);
+      return v === cid;
+    } catch {
+      return false;
+    }
+  });
+  const rows = filtered
+    .map((acc: any) => {
+      const owner = acc.account.owner?.toString?.() ?? "";
+      const amountLamports = BigInt((acc.account.amount as any)?.toString?.() ?? acc.account.amount);
+      const amount = fromLamports(amountLamports);
+      const timestamp = Number((acc.account.timestamp as any)?.toString?.() ?? acc.account.timestamp);
+      const credited = !!acc.account.credited;
+      return { owner, amount, timestamp, credited };
+    })
+    .sort((a: any, b: any) => b.timestamp - a.timestamp);
+  return rows;
+}
+

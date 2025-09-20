@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./ui/alert-dialog";
-import { Edit, Trash2, Calendar, TrendingUp, Users } from "lucide-react";
+import { Edit, Trash2, Calendar, TrendingUp, Users, Loader2 } from "lucide-react";
 
 function format(n: number, symbol: string) {
   return `${n.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${symbol}`;
@@ -31,10 +31,14 @@ export function CampaignCard({ id }: { id: string }) {
   const camp = state.campaigns.find((c) => c.id === id);
   const [loadingDonate, setLoadingDonate] = useState(false);
   const [loadingWithdraw, setLoadingWithdraw] = useState(false);
+  const [openDonate, setOpenDonate] = useState(false);
+  const [openWithdraw, setOpenWithdraw] = useState(false);
   const [donation, setDonation] = useState<string>("");
   const [withdrawAmt, setWithdrawAmt] = useState<string>("");
   if (!camp) return null;
-  const pct = Math.min(100, Math.floor((camp.amountRaised / Math.max(1, camp.targetAmount)) * 100));
+  const total = camp.totalDonated ?? camp.amountRaised;
+  const pct = Math.min(100, Math.floor((total / Math.max(1, camp.targetAmount)) * 100));
+  const isCompleted = camp.status === "completed";
 
   return (
     <Card className="group overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-card to-card/50">
@@ -75,7 +79,7 @@ export function CampaignCard({ id }: { id: string }) {
         <CardContent className="space-y-4 pb-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="font-semibold text-lg">{format(camp.amountRaised, state.settings.currencySymbol)}</span>
+              <span className="font-semibold text-lg">{format(total, state.settings.currencySymbol)}</span>
               <span className="text-muted-foreground font-medium">of {format(camp.targetAmount, state.settings.currencySymbol)}</span>
             </div>
             <div className="space-y-2">
@@ -84,9 +88,12 @@ export function CampaignCard({ id }: { id: string }) {
                 <span className="text-muted-foreground font-medium">{pct}% funded</span>
                 <span className="text-muted-foreground flex items-center gap-1">
                   <Users className="h-3 w-3" />
-                  {Math.floor(Math.random() * 50) + 1} backers
+                  {camp.donorsCount ?? 0} backers
                 </span>
               </div>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Balance: {format(camp.amountRaised, state.settings.currencySymbol)} • Total Donated: {format(total, state.settings.currencySymbol)}
             </div>
           </div>
           
@@ -106,9 +113,9 @@ export function CampaignCard({ id }: { id: string }) {
       </Link>
       <CardFooter className="border-t bg-muted/20 p-4">
         <div className="flex w-full flex-wrap gap-2">
-          <Dialog>
+          <Dialog open={openDonate} onOpenChange={setOpenDonate}>
             <DialogTrigger asChild>
-              <Button size="sm" className="flex-1 sm:flex-none bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 transition-all duration-200">
+              <Button size="sm" disabled={isCompleted || loadingDonate} className="flex-1 sm:flex-none bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed">
                 Donate
               </Button>
             </DialogTrigger>
@@ -140,6 +147,7 @@ export function CampaignCard({ id }: { id: string }) {
                     placeholder={`${state.settings.minDonation}`}
                     value={donation}
                     onChange={(e) => setDonation(e.currentTarget.value)}
+                    disabled={loadingDonate}
                     className="text-lg font-semibold"
                   />
                   <div className="text-xs text-muted-foreground">
@@ -147,7 +155,7 @@ export function CampaignCard({ id }: { id: string }) {
                   </div>
                 </div>
                 <Button
-                  disabled={loadingDonate}
+                  disabled={loadingDonate || isCompleted}
                   onClick={async () => {
                     const amt = parseFloat(donation);
                     if (isNaN(amt) || amt < (state.settings.minDonation ?? 0.1)) {
@@ -159,6 +167,7 @@ export function CampaignCard({ id }: { id: string }) {
                       await donate(camp.id, amt);
                       toast.success("Donation sent. Check wallet for confirmation.");
                       setDonation("");
+                      setOpenDonate(false);
                     } catch (e: any) {
                       toast.error(e?.message ?? "Failed to donate");
                     } finally {
@@ -167,15 +176,19 @@ export function CampaignCard({ id }: { id: string }) {
                   }}
                   className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
                 >
-                  {loadingDonate ? "Processing..." : "Confirm Donation"}
+                  {loadingDonate ? (
+                    <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Processing...</span>
+                  ) : (
+                    "Confirm Donation"
+                  )}
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
 
-          <Dialog>
+          <Dialog open={openWithdraw} onOpenChange={setOpenWithdraw}>
             <DialogTrigger asChild>
-              <Button size="sm" variant="outline" className="border-dashed hover:border-solid transition-all">
+              <Button size="sm" variant="outline" disabled={isCompleted || loadingWithdraw} className="border-dashed hover:border-solid transition-all disabled:opacity-60 disabled:cursor-not-allowed">
                 Withdraw
               </Button>
             </DialogTrigger>
@@ -206,13 +219,14 @@ export function CampaignCard({ id }: { id: string }) {
                     step="0.1"
                     value={withdrawAmt}
                     onChange={(e) => setWithdrawAmt(e.currentTarget.value)}
+                    disabled={loadingWithdraw}
                     className="text-lg font-semibold"
                   />
                 </div>
                 <div className="flex gap-2">
                   <Button 
                     className="flex-1 bg-gradient-to-r from-primary to-primary/90" 
-                    disabled={loadingWithdraw} 
+                    disabled={loadingWithdraw || isCompleted} 
                     onClick={async () => {
                       const min = state.settings.minDonation ?? 0.1;
                       if ((camp.amountRaised ?? 0) < min) {
@@ -223,6 +237,7 @@ export function CampaignCard({ id }: { id: string }) {
                         setLoadingWithdraw(true);
                         await withdraw(camp.id);
                         toast.success("Withdrawal requested.");
+                        setOpenWithdraw(false);
                       } catch (e: any) {
                         toast.error(e?.message ?? "Failed to withdraw");
                       } finally {
@@ -230,12 +245,16 @@ export function CampaignCard({ id }: { id: string }) {
                       }
                     }}
                   >
-                    Withdraw All
+                    {loadingWithdraw ? (
+                      <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Processing...</span>
+                    ) : (
+                      "Withdraw All"
+                    )}
                   </Button>
                   <Button
                     variant="outline"
                     className="flex-1"
-                    disabled={loadingWithdraw}
+                    disabled={loadingWithdraw || isCompleted}
                     onClick={async () => {
                       const amt = parseFloat(withdrawAmt);
                       if (isNaN(amt) || amt < (state.settings.minDonation ?? 0.1)) {
@@ -247,6 +266,7 @@ export function CampaignCard({ id }: { id: string }) {
                         await withdraw(camp.id, amt);
                         toast.success("Withdrawal requested.");
                         setWithdrawAmt("");
+                        setOpenWithdraw(false);
                       } catch (e: any) {
                         toast.error(e?.message ?? "Failed to withdraw");
                       } finally {
@@ -254,23 +274,34 @@ export function CampaignCard({ id }: { id: string }) {
                       }
                     }}
                   >
-                    {loadingWithdraw ? "Processing..." : "Withdraw Amount"}
+                    {loadingWithdraw ? (
+                      <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Processing...</span>
+                    ) : (
+                      "Withdraw Amount"
+                    )}
                   </Button>
                 </div>
               </div>
             </DialogContent>
           </Dialog>
 
-          <Button asChild size="sm" variant="ghost" className="hover:bg-primary/10 hover:text-primary">
-            <Link href={`/campaigns/${camp.id}/edit`} className="flex items-center gap-2">
+          {isCompleted ? (
+            <Button size="sm" variant="ghost" disabled className="hover:bg-primary/10 hover:text-primary disabled:opacity-60 disabled:cursor-not-allowed">
               <Edit className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Edit</span>
-            </Link>
-          </Button>
+            </Button>
+          ) : (
+            <Button asChild size="sm" variant="ghost" className="hover:bg-primary/10 hover:text-primary">
+              <Link href={`/campaigns/${camp.id}/edit`} className="flex items-center gap-2">
+                <Edit className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Edit</span>
+              </Link>
+            </Button>
+          )}
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button size="sm" variant="ghost" className="hover:bg-destructive/10 hover:text-destructive">
+              <Button size="sm" variant="ghost" disabled={isCompleted} className="hover:bg-destructive/10 hover:text-destructive disabled:opacity-60 disabled:cursor-not-allowed">
                 <Trash2 className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline ml-2">Delete</span>
               </Button>
