@@ -25,11 +25,28 @@ type StoreContextType = {
   withdraw: (id: string, amount?: number) => Promise<void>;
   updateSettings: (settings: Partial<PlatformSettings>) => Promise<void>;
   resetAll: () => void;
+  endCampaign: (id: string, message: string) => Promise<void>;
 };
 
 const StoreContext = createContext<StoreContextType | null>(null);
 
 const STORAGE_KEY = "solfund-ui-state-v1";
+const ENDED_KEY = "solfund-ended-v1";
+
+function loadEnded(): Record<string, { message: string }> {
+  try {
+    const raw = localStorage.getItem(ENDED_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveEnded(map: Record<string, { message: string }>) {
+  try {
+    localStorage.setItem(ENDED_KEY, JSON.stringify(map));
+  } catch {}
+}
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(initialState);
@@ -37,19 +54,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
+        const ended = typeof window !== "undefined" ? loadEnded() : {};
         const onchain = await listCampaigns();
-        const mapped: Campaign[] = onchain.campaigns.map(({ data }) => ({
-          id: data.cid.toString(),
-          title: data.title,
-          description: data.description,
-          imageUrl: data.imageUrl ?? data.image_url,
-          targetAmount: fromLamports(BigInt((data.goal as any).toString?.() ?? data.goal)),
-          amountRaised: fromLamports(BigInt(((data.amountRaised ?? data.amount_raised) as any).toString?.() ?? (data.amountRaised ?? data.amount_raised))),
-          deadline: undefined,
-          owner: data.creator?.toString?.(),
-          createdAt: new Date(Number(((data.timestamp as any).toString?.() ?? data.timestamp)) * 1000).toISOString(),
-          status: data.active ? "active" : "completed",
-        }));
+        const mapped: Campaign[] = onchain.campaigns.map(({ data }) => {
+          const id = data.cid.toString();
+          const endedInfo = ended[id];
+          const base: Campaign = {
+            id,
+            title: data.title,
+            description: data.description,
+            imageUrl: data.imageUrl ?? data.image_url,
+            targetAmount: fromLamports(BigInt((data.goal as any).toString?.() ?? data.goal)),
+            amountRaised: fromLamports(BigInt(((data.amountRaised ?? data.amount_raised) as any).toString?.() ?? (data.amountRaised ?? data.amount_raised))),
+            deadline: undefined,
+            owner: data.creator?.toString?.(),
+            createdAt: new Date(Number(((data.timestamp as any).toString?.() ?? data.timestamp)) * 1000).toISOString(),
+            status: data.active ? "active" : "completed",
+          };
+          if (endedInfo) {
+            base.status = "completed";
+            base.completionMessage = endedInfo.message;
+          }
+          return base;
+        });
         const st = await getProgramState(onchain.program);
         setState({
           campaigns: mapped,
@@ -124,6 +151,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     })();
   }, [state.campaigns]);
 
+  const endCampaign = useCallback((id: string, message: string) => {
+    return (async () => {
+      const current = state.campaigns.find((c) => c.id === id);
+      const amt = current?.amountRaised ?? 0;
+      if (amt > 0) {
+        await rpcWithdraw(BigInt(id), amt);
+      }
+      const ended = loadEnded();
+      ended[id] = { message };
+      saveEnded(ended);
+      setState((prev) => ({
+        ...prev,
+        campaigns: prev.campaigns.map((c) => (c.id === id ? { ...c, amountRaised: 0, status: "completed", completionMessage: message } : c)),
+      }));
+    })();
+  }, [state.campaigns]);
+
   const updateSettings = useCallback((settings: Partial<PlatformSettings>) => {
     return (async () => {
       if (typeof settings.platformFeePercent === "number") {
@@ -143,10 +187,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       deleteCampaign,
       donate,
       withdraw,
+      endCampaign,
       updateSettings,
       resetAll,
     }),
-    [state, createCampaign, updateCampaign, deleteCampaign, donate, withdraw, updateSettings, resetAll]
+    [state, createCampaign, updateCampaign, deleteCampaign, donate, withdraw, endCampaign, updateSettings, resetAll]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
@@ -155,5 +200,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 export function useStore() {
   const ctx = useContext(StoreContext);
   if (!ctx) throw new Error("useStore must be used within StoreProvider");
-  return ctx;
+  return ctx as (typeof ctx & {
+    endCampaign: (id: string, message: string) => Promise<void>;
+  });
 }

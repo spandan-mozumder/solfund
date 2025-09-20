@@ -11,6 +11,7 @@ export interface Campaign {
   owner?: string; // pubkey string (optional in UI)
   createdAt: string; // ISO
   status: CampaignStatus;
+  completionMessage?: string;
 }
 
 export interface PlatformSettings {

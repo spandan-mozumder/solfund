@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 import { StoreProvider } from "@/lib/store";
 import { AppWalletProvider } from "@/components/WalletProvider";
 import { Toaster } from "sonner";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,13 +32,24 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AppWalletProvider>
-          <StoreProvider>
-            <Header />
-            <main className="container mx-auto px-4 py-6">{children}</main>
-            <Toaster richColors position="top-right" />
-          </StoreProvider>
-        </AppWalletProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AppWalletProvider>
+            <StoreProvider>
+              <Header />
+              <main className="container mx-auto px-4 py-8 lg:py-12 max-w-7xl">
+                <div className="relative">
+                  {children}
+                </div>
+              </main>
+              <Toaster richColors position="top-right" expand={false} closeButton />
+            </StoreProvider>
+          </AppWalletProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
