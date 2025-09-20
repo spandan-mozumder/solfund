@@ -1,7 +1,7 @@
 "use client";
 import { Connection, PublicKey, SystemProgram, clusterApiUrl } from "@solana/web3.js";
 import { AnchorProvider, Program, Idl } from "@coral-xyz/anchor";
-import idlJson from "../../anchor/target/idl/solfund.json";
+import idlJson from "@/lib/idl/solfund.json";
 
 export type WalletAdapter = {
   publicKey: PublicKey | null;
