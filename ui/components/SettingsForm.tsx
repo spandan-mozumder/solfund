@@ -28,7 +28,7 @@ export function SettingsForm() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 mt-10">
       <div className="text-center">
         <h1 className="text-3xl font-bold">Platform Settings</h1>
         <p className="text-muted-foreground mt-2">

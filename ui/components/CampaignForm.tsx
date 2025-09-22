@@ -68,7 +68,7 @@ export function CampaignForm({ defaultValues, mode }: { defaultValues?: Partial<
   };
 
   return (
-    <Card className="mx-auto max-w-2xl shadow-lg">
+    <Card className="mx-auto max-w-2xl shadow-lg mt-10">
       <CardHeader className="text-center border-b">
         <CardTitle className="text-2xl font-bold">
           {mode === "create" ? "Create New Campaign" : "Edit Campaign"}

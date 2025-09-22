@@ -96,13 +96,13 @@ export default function Home() {
             <Button asChild variant="outline">
               <Link href="/campaigns/completed" className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4" />
-                Completed Campaigns
+                Completed
               </Link>
             </Button>
             <Button asChild variant="outline">
               <Link href="/campaigns/new" className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
-                Create Campaign
+                Create
               </Link>
             </Button>
           </div>

@@ -43,6 +43,7 @@ export function CampaignCard({ id }: { id: string }) {
   return (
     <Card className="group overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-card to-card/50">
       <Link href={`/campaigns/${camp.id}`} className="block" aria-label={`View ${camp.title}`}>
+      <div className="mb-5">
         {camp.imageUrl ? (
           <div className="relative aspect-video overflow-hidden">
             <img 
@@ -66,6 +67,7 @@ export function CampaignCard({ id }: { id: string }) {
             <TrendingUp className="h-12 w-12 text-muted-foreground/50" />
           </div>
         )}
+        </div>
         
         <CardHeader className="pb-3">
           <CardTitle className="line-clamp-2 text-lg font-semibold leading-tight group-hover:text-primary transition-colors">
